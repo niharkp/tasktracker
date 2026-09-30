@@ -1,38 +1,65 @@
-from flask import Flask, jsonify, request
+from flask import Flask, request, redirect, render_template_string
 
 app = Flask(__name__)
 tasks = []
 
+HTML = """
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Task Tracker</title>
+</head>
+<body>
+    <h1>Task Tracker</h1>
+
+    <form action="/add" method="POST">
+        <input name="task" placeholder="Enter a task" required>
+        <button>Add</button>
+    </form>
+
+    <ul>
+    {% for i, task in enumerate(tasks) %}
+        <li>
+            {% if task.done %}
+                <s>{{ task.text }}</s>
+            {% else %}
+                {{ task.text }}
+            {% endif %}
+
+            <form action="/toggle/{{ i }}" method="POST" style="display:inline">
+                <button>✓</button>
+            </form>
+
+            <form action="/delete/{{ i }}" method="POST" style="display:inline">
+                <button>Delete</button>
+            </form>
+        </li>
+    {% endfor %}
+    </ul>
+</body>
+</html>
+"""
+
 @app.route("/")
 def home():
-    return jsonify({"Name": "Naga_Nihar_KP",
-        
-        "goal": "Cloud & DevOps Engineer",
-        "skills": ["Python", "Docker", "AWS", "Git", "HTML/CSS"],
-       
-       
-    })
+    return render_template_string(HTML, tasks=tasks, enumerate=enumerate)
 
-@app.route("/health")
-def health():
-    return jsonify({"status": "ok"})
+@app.post("/add")
+def add():
+    text = request.form["task"].strip()
+    if text:
+        tasks.append({"text": text, "done": False})
+    return redirect("/")
 
-@app.route("/tasks", methods=["GET"])
-def get_tasks():
-    return jsonify(tasks)
+@app.post("/toggle/<int:i>")
+def toggle(i):
+    tasks[i]["done"] = not tasks[i]["done"]
+    return redirect("/")
 
-@app.route("/tasks", methods=["POST"])
-def add_task():
-    data = request.get_json()
-    task = {"id": len(tasks) + 1, "title": data["title"], "done": False}
-    tasks.append(task)
-    return jsonify(task), 201
-
-@app.route("/tasks/<int:task_id>", methods=["DELETE"])
-def delete_task(task_id):
-    global tasks
-    tasks = [t for t in tasks if t["id"] != task_id]
-    return jsonify({"deleted": task_id})
+@app.post("/delete/<int:i>")
+def delete(i):
+    tasks.pop(i)
+    return redirect("/")
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
